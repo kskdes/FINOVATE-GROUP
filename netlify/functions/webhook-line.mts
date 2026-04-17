@@ -1,8 +1,4 @@
-import type {Config} from '@netlify/functions';
 
-export const config: Config = {
-  path: '/webhook/line',
-};
 
 interface LineEventSource {
   type: 'user' | 'group' | 'room';
