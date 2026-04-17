@@ -4,6 +4,7 @@ import type { Config } from "@netlify/functions";
 // Runs daily at 8:00 AM JST (23:00 UTC)
 export const config: Config = {
   schedule: "0 23 * * *",
+  timeout: 60,
 };
 
 const LINE_API_URL = "https://api.line.me/v2/bot/message/push";
@@ -97,7 +98,7 @@ async function buildLineSummaryAndItems(
   });
 
   const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
+    model: "claude-haiku-4-5-20251001",
     max_tokens: 2000,
     messages: [
       {
@@ -149,7 +150,7 @@ async function generateWordPressArticle(
   });
 
   const message = await anthropic.messages.create({
-    model: "claude-sonnet-4-6",
+    model: "claude-haiku-4-5-20251001",
     max_tokens: 2000,
     messages: [
       {
