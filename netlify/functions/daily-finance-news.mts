@@ -99,32 +99,31 @@ async function buildLineSummaryAndItems(
 
   const message = await anthropic.messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 2000,
+    max_tokens: 1500,
     messages: [
       {
         role: "user",
         content: `あなたは日本の家庭向けに世界の金融ニュースをわかりやすく伝える専門家です。
 
-以下の英語ニュース記事の中から、日本の一般家庭（生活費・物価・円の価値・エネルギー・食費・投資・住宅ローン等）に特に影響しそうなものを5〜7件選び、日本語で要約してください。
+以下の英語ニュース記事の中から、日本の一般家庭（生活費・物価・円の価値・エネルギー・食費・投資・住宅ローン等）に特に影響しそうなものを3〜5件選び、日本語で要約してください。
 
 【要件】
-- 日付: ${today}
-- 各ニュースに「日本の家庭への影響」を1〜2文で付記する
-- 難しい金融用語は噛み砕いて説明する
-- 以下のJSONフォーマットで出力する（LINEテキストとニュース項目リストの両方）
+- 各ニュースに「日本の家庭への影響」を1文で付記する
+- 全体1000文字以内
 
-【出力形式】
-{
-  "lineText": "📰 今日の世界金融ニュース（${today}）\\n\\n1️⃣ 【見出し】\\n要約。\\n💡 日本への影響: 影響。\\n\\n2️⃣ ...\\n\\n---\\n🏦 Finovate Group",
-  "items": [
-    {
-      "number": "1",
-      "heading": "見出し（20字以内）",
-      "body": "本文要約（100〜150字）",
-      "impact": "日本の家庭への影響（50〜80字）"
-    }
-  ]
-}
+【出力フォーマット（このまま出力）】
+📰 今日の世界金融ニュース（${today}）
+
+1️⃣ 【見出し】
+要約文。
+💡 日本への影響: 影響説明。
+
+2️⃣ 【見出し】
+要約文。
+💡 日本への影響: 影響説明。
+
+---
+🏦 Finovate Group
 
 【ニュース一覧】
 ${articlesText}`,
@@ -135,10 +134,27 @@ ${articlesText}`,
   const block = message.content[0];
   if (block.type !== "text") throw new Error("Unexpected response type");
 
-  const jsonMatch = block.text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("JSON not found in response");
+  const lineText = block.text.trim();
+  console.log("Generated lineText length:", lineText.length);
 
-  return JSON.parse(jsonMatch[0]) as { lineText: string; items: NewsItem[] };
+  // LINE の5000文字制限に収める
+  const safeText = lineText.length > 4900 ? lineText.slice(0, 4900) + "…" : lineText;
+
+  // テキストからニュース項目を抽出
+  const items: NewsItem[] = [];
+  const itemMatches = safeText.matchAll(/(\d+)️⃣\s*【(.+?)】\n([\s\S]+?)(?=\d+️⃣|---|\n\n🏦|$)/g);
+  for (const m of itemMatches) {
+    const body = m[3].replace(/💡.+/s, "").trim();
+    const impactMatch = m[3].match(/💡 日本への影響[:：]\s*(.+)/);
+    items.push({
+      number: m[1],
+      heading: m[2],
+      body,
+      impact: impactMatch ? impactMatch[1].trim() : "",
+    });
+  }
+
+  return { lineText: safeText, items };
 }
 
 async function generateWordPressArticle(
