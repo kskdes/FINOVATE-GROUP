@@ -265,7 +265,12 @@ async function sendLineMessage(text: string): Promise<void> {
 
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`LINE API error ${res.status}: ${body}`);
+    console.error("LINE error status:", res.status);
+    console.error("LINE error body part1:", body.slice(0, 200));
+    console.error("LINE error body part2:", body.slice(200, 400));
+    console.error("LINE token prefix:", token.slice(0, 10));
+    console.error("LINE userId:", to);
+    throw new Error(`LINE API error ${res.status}`);
   }
 }
 
