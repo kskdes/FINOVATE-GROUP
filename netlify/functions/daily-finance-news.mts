@@ -85,7 +85,7 @@ async function buildLineSummaryAndItems(
     .slice(0, 25)
     .map(
       (a, i) =>
-        `[${i + 1}] ${a.source.name}\nタイトル: ${a.title}\n概要: ${a.description ?? "なし"}`
+        `[${i + 1}] ${a.source.name}\nタイトル: ${a.title}\n概要: ${a.description ?? "なし"}\nURL: ${a.url}`
     )
     .join("\n\n");
 
@@ -117,10 +117,12 @@ async function buildLineSummaryAndItems(
 1️⃣ 【見出し】
 要約文。
 💡 日本への影響: 影響説明。
+🔗 出典: URL
 
 2️⃣ 【見出し】
 要約文。
 💡 日本への影響: 影響説明。
+🔗 出典: URL
 
 ---
 🏦 Finovate Group
