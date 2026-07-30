@@ -4,52 +4,33 @@ config();
 
 const LINE_API_URL = "https://api.line.me/v2/bot/message/push";
 
-interface NewsArticle {
-  title: string;
-  description: string | null;
-  url: string;
-  source: { name: string };
-}
-interface NewsAPIResponse {
-  status: string;
-  articles: NewsArticle[];
-}
-
-async function fetchFinancialNews(): Promise<NewsArticle[]> {
-  const apiKey = process.env.NEWS_API_KEY!;
-  const queries = [
-    "inflation interest rates federal reserve",
-    "oil price energy dollar yen",
-    "US economy recession stock market",
-    "China economy trade",
-    "food prices commodity",
-  ];
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const from = yesterday.toISOString().split("T")[0];
-  const articles: NewsArticle[] = [];
-  for (const q of queries) {
-    const url = new URL("https://newsapi.org/v2/everything");
-    url.searchParams.set("q", q);
-    url.searchParams.set("from", from);
-    url.searchParams.set("sortBy", "relevancy");
-    url.searchParams.set("pageSize", "5");
-    url.searchParams.set("language", "en");
-    url.searchParams.set("apiKey", apiKey);
-    const res = await fetch(url.toString());
-    if (!res.ok) continue;
-    const data = (await res.json()) as NewsAPIResponse;
-    if (data.status === "ok") articles.push(...data.articles);
-  }
-  const seen = new Set<string>();
-  return articles.filter((a) => {
-    if (seen.has(a.title)) return false;
-    seen.add(a.title);
-    return true;
-  });
-}
-
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+// Sample articles with real URLs for format testing
+const sampleArticlesText = `[1] Reuters
+タイトル: Federal Reserve holds interest rates steady, signals caution on cuts
+概要: The Fed kept rates at current levels as policymakers wait for more data on inflation before easing monetary policy.
+URL: https://www.reuters.com/markets/us/federal-reserve-holds-rates-steady/
+
+[2] Bloomberg
+タイトル: Oil prices drop as Middle East tensions ease, OPEC weighs output
+概要: Crude oil fell over 2% amid signs of diplomatic progress in the Middle East, reducing geopolitical risk premiums.
+URL: https://www.bloomberg.com/news/articles/oil-prices-middle-east
+
+[3] Nikkei Asia
+タイトル: Dollar weakens against yen amid safe-haven demand shift
+概要: The US dollar declined for a second consecutive week against the yen as investors moved away from safe-haven assets.
+URL: https://asia.nikkei.com/Economy/dollar-yen-decline
+
+[4] Financial Times
+タイトル: China's factory output slows as export orders weaken
+概要: Chinese manufacturing activity showed signs of slowing as global trade uncertainty weighs on export demand.
+URL: https://www.ft.com/content/china-factory-output
+
+[5] Wall Street Journal
+タイトル: US inflation cools slightly but remains above Fed target
+概要: Consumer prices rose at a slower pace last month, giving the Federal Reserve more room but not yet enough to cut rates.
+URL: https://www.wsj.com/economy/us-inflation-data`;
 
 const today = new Date().toLocaleDateString("ja-JP", {
   timeZone: "Asia/Tokyo",
@@ -58,18 +39,6 @@ const today = new Date().toLocaleDateString("ja-JP", {
   day: "numeric",
   weekday: "long",
 });
-
-console.log("📡 ニュース取得中...");
-const articles = await fetchFinancialNews();
-console.log(`✅ ${articles.length}件取得`);
-
-const articlesText = articles
-  .slice(0, 25)
-  .map(
-    (a, i) =>
-      `[${i + 1}] ${a.source.name}\nタイトル: ${a.title}\n概要: ${a.description ?? "なし"}\nURL: ${a.url}`
-  )
-  .join("\n\n");
 
 console.log("🤖 Claude で要約生成中...");
 const message = await anthropic.messages.create({
@@ -104,13 +73,13 @@ const message = await anthropic.messages.create({
 🏦 Finovate Group
 
 【ニュース一覧】
-${articlesText}`,
+${sampleArticlesText}`,
     },
   ],
 });
 
 const block = message.content[0];
-if (block.type !== "text") throw new Error("Unexpected response type");
+if (block.type !== "text") throw new Error("Unexpected response");
 const lineText = block.text.trim();
 const safeText = lineText.length > 4900 ? lineText.slice(0, 4900) + "…" : lineText;
 
@@ -134,7 +103,7 @@ const res = await fetch(LINE_API_URL, {
 
 if (!res.ok) {
   const body = await res.text();
-  console.error("LINE error:", res.status, body);
+  console.error("❌ LINE error:", res.status, body);
   process.exit(1);
 }
 console.log("✅ LINEに送信しました！");
